@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Space Rocket</title>
+
+<style>
+    body {
+        margin: 0;
+        overflow: hidden;
+        background: black;
+        font-family: Arial, sans-serif;
+    }
+
+    canvas {
+        display: block;
+        margin: auto;
+        background: linear-gradient(to bottom, #000010, #000000);
+    }
+
+    #gameOver {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        color: white;
+        font-size: 48px;
+        text-align: center;
+        display: none;
+    }
+
+    #restartBtn {
+        margin-top: 20px;
+        padding: 10px 20px;
+        font-size: 24px;
+        cursor: pointer;
+    }
+</style>
+</head>
+
+<body>
+
+<canvas id="gameCanvas"></canvas>
+
+<div id="gameOver">
+    <div>GAME OVER</div>
+    <div id="finalScore"></div>
+    <button id="restartBtn">Restart</button>
+</div>
+
+<script>
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
+
+canvas.width = 900;
+canvas.height = 600;
+
+let keys = {};
+
+document.addEventListener("keydown", (e) => {
+    keys[e.key] = true;
+});
+
+document.addEventListener("keyup", (e) => {
+    keys[e.key] = false;
+});
+
+const player = {
+    x: canvas.width / 2 - 25,
+    y: canvas.height - 120,
+    width: 50,
+    height: 80,
+    speed: 7
+};
+
+let missiles = [];
+let stars = [];
+
+let score = 0;
+let gameRunning = true;
+let missileSpeed = 4;
+
+for (let i = 0; i < 120; i++) {
+    stars.push({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
+        size: Math.random() * 2
+    });
+}
+
+function spawnMissile() {
+    missiles.push({
+        x: Math.random() * (canvas.width - 40),
+        y: -80,
+        width: 40,
+        height: 80
+    });
+}
+
+function drawPlayer() {
+    ctx.fillStyle = "#00aaff";
+
+    // корпус
+    ctx.fillRect(player.x, player.y, player.width, player.height);
+
+    // ніс
+    ctx.beginPath();
+    ctx.moveTo(player.x, player.y);
+    ctx.lineTo(player.x + player.width / 2, player.y - 30);
+    ctx.lineTo(player.x + player.width, player.y);
+    ctx.fill();
+
+    // двигун
+    ctx.fillStyle = "orange";
+    ctx.fillRect(player.x + 15, player.y + player.height, 20, 20);
+}
+
+function drawMissiles() {
+    ctx.fillStyle = "red";
+
+    missiles.forEach((m) => {
+        ctx.fillRect(m.x, m.y, m.width, m.height);
+
+        ctx.beginPath();
+        ctx.moveTo(m.x, m.y);
+        ctx.lineTo(m.x + m.width / 2, m.y - 20);
+        ctx.lineTo(m.x + m.width, m.y);
+        ctx.fill();
+    });
+}
+
+function drawStars() {
+    ctx.fillStyle = "white";
+
+    stars.forEach((s) => {
+        ctx.fillRect(s.x, s.y, s.size, s.size);
+
+        s.y += 1;
+
+        if (s.y > canvas.height) {
+            s.y = 0;
+            s.x = Math.random() * canvas.width;
+        }
+    });
+}
+
+function movePlayer() {
+    if (keys["ArrowLeft"]) {
+        player.x -= player.speed;
+    }
+
+    if (keys["ArrowRight"]) {
+        player.x += player.speed;
+    }
+
+    if (keys["ArrowUp"]) {
+        player.y -= player.speed;
+    }
+
+    if (keys["ArrowDown"]) {
+        player.y += player.speed;
+    }
+
+    if (player.x < 0) player.x = 0;
+    if (player.x + player.width > canvas.width)
+        player.x = canvas.width - player.width;
+
+    if (player.y < 0) player.y = 0;
+    if (player.y + player.height > canvas.height)
+        player.y = canvas.height - player.height;
+}
+
+function moveMissiles() {
+    missiles.forEach((m) => {
+        m.y += missileSpeed;
+    });
+
+    missiles = missiles.filter((m) => {
+        if (m.y > canvas.height) {
+            score++;
+            return false;
+        }
+        return true;
+    });
+}
+
+function checkCollision() {
+    for (let m of missiles) {
+        if (
+            player.x < m.x + m.width &&
+            player.x + player.width > m.x &&
+            player.y < m.y + m.height &&
+            player.y + player.height > m.y
+        ) {
+            endGame();
+        }
+    }
+}
+
+function drawScore() {
+    ctx.fillStyle = "white";
+    ctx.font = "32px Arial";
+    ctx.fillText("Score: " + score, 20, 40);
+}
+
+function endGame() {
+    gameRunning = false;
+
+    document.getElementById("gameOver").style.display = "block";
+    document.getElementById("finalScore").innerText =
+        "Score: " + score;
+}
+
+function gameLoop() {
+    if (!gameRunning) return;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    drawStars();
+
+    movePlayer();
+    moveMissiles();
+
+    drawPlayer();
+    drawMissiles();
+
+    checkCollision();
+    drawScore();
+
+    if (Math.random() < 0.03) {
+        spawnMissile();
+    }
+
+    missileSpeed += 0.0005;
+
+    requestAnimationFrame(gameLoop);
+}
+
+document.getElementById("restartBtn").onclick = () => {
+    location.reload();
+};
+
+gameLoop();
+</script>
+
+</body>
+</html>
