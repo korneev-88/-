@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Space Game</title>
+
+<style>
+body{
+    margin:0;
+    overflow:hidden;
+    background:black;
+}
+
+canvas{
+    display:block;
+    background:
+    radial-gradient(circle at center,#0b1026,#000);
+}
+</style>
+</head>
+
+<body>
+
+<canvas id="game"></canvas>
+
+<script>
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
+let keys = {};
+let score = 0;
+let gameOver = false;
+
+document.addEventListener("keydown",e=>{
+    keys[e.key]=true;
+
+    if(gameOver && e.key==="r"){
+        location.reload();
+    }
+});
+
+document.addEventListener("keyup",e=>{
+    keys[e.key]=false;
+});
+
+const rocket = {
+    x: canvas.width/2,
+    y: canvas.height-150,
+    speed:8
+};
+
+let debris = [];
+let stars = [];
+let particles = [];
+
+for(let i=0;i<300;i++){
+
+    stars.push({
+        x:Math.random()*canvas.width,
+        y:Math.random()*canvas.height,
+        size:Math.random()*2,
+        speed:Math.random()*2+0.5
+    });
+}
+
+function drawStars(){
+
+    for(let s of stars){
+
+        ctx.fillStyle="white";
+
+        ctx.beginPath();
+        ctx.arc(s.x,s.y,s.size,0,Math.PI*2);
+        ctx.fill();
+
+        s.y += s.speed;
+
+        if(s.y > canvas.height){
+
+            s.y = 0;
+            s.x = Math.random()*canvas.width;
+        }
+    }
+}
+
+function drawRocket(){
+
+    ctx.save();
+
+    ctx.translate(rocket.x,rocket.y);
+
+    // тінь
+    ctx.shadowColor = "#00d0ff";
+    ctx.shadowBlur = 20;
+
+    // корпус
+    ctx.fillStyle = "#d9d9d9";
+
+    ctx.beginPath();
+    ctx.moveTo(0,-60);
+    ctx.lineTo(-30,40);
+    ctx.lineTo(30,40);
+    ctx.closePath();
+    ctx.fill();
+
+    // червоний ніс
+    ctx.fillStyle = "#ff3030";
+
+    ctx.beginPath();
+    ctx.moveTo(0,-80);
+    ctx.lineTo(-18,-35);
+    ctx.lineTo(18,-35);
+    ctx.fill();
+
+    // кабіна
+    ctx.fillStyle = "#59caff";
+
+    ctx.beginPath();
+    ctx.arc(0,-5,12,0,Math.PI*2);
+    ctx.fill();
+
+    // ліве крило
+    ctx.fillStyle = "#888";
+
+    ctx.beginPath();
+    ctx.moveTo(-30,20);
+    ctx.lineTo(-55,55);
+    ctx.lineTo(-30,50);
+    ctx.fill();
+
+    // праве крило
+    ctx.beginPath();
+    ctx.moveTo(30,20);
+    ctx.lineTo(55,55);
+    ctx.lineTo(30,50);
+    ctx.fill();
+
+    // двигун
+    ctx.fillStyle = "orange";
+
+    ctx.beginPath();
+    ctx.moveTo(-10,40);
+    ctx.lineTo(0,80 + Math.random()*20);
+    ctx.lineTo(10,40);
+    ctx.fill();
+
+    ctx.restore();
+}
+
+function moveRocket(){
+
+    if(keys["ArrowLeft"]){
+        rocket.x -= rocket.speed;
+    }
+
+    if(keys["ArrowRight"]){
+        rocket.x += rocket.speed;
+    }
+
+    if(keys["ArrowUp"]){
+        rocket.y -= rocket.speed;
+    }
+
+    if(keys["ArrowDown"]){
+        rocket.y += rocket.speed;
+    }
+
+    if(rocket.x < 60) rocket.x = 60;
+    if(rocket.x > canvas.width-60) rocket.x = canvas.width-60;
+
+    if(rocket.y < 100) rocket.y = 100;
+    if(rocket.y > canvas.height-100){
+        rocket.y = canvas.height-100;
+    }
+}
+
+function spawnDebris(){
+
+    const type = Math.floor(Math.random()*3);
+
+    debris.push({
+        x:Math.random()*canvas.width,
+        y:-100,
+        size:40+Math.random()*40,
+        speed:4+Math.random()*5,
+        rotation:Math.random()*360,
+        rotSpeed:(Math.random()-0.5)*4,
+        type:type
+    });
+}
+
+function drawDebris(){
+
+    for(let d of debris){
+
+        ctx.save();
+
+        ctx.translate(d.x,d.y);
+        ctx.rotate(d.rotation*Math.PI/180);
+
+        // астероїд
+        if(d.type===0){
+
+            ctx.fillStyle="#666";
+
+            ctx.beginPath();
+
+            for(let i=0;i<9;i++){
+
+                const angle = i*Math.PI*2/9;
+                const radius = d.size/2 + Math.random()*10;
+
+                const px = Math.cos(angle)*radius;
+                const py = Math.sin(angle)*radius;
+
+                if(i===0){
+                    ctx.moveTo(px,py);
+                }else{
+                    ctx.lineTo(px,py);
+                }
+            }
+
+            ctx.closePath();
+            ctx.fill();
+
+            ctx.fillStyle="#444";
+
+            for(let i=0;i<5;i++){
+
+                ctx.beginPath();
+                ctx.arc(
+                    (Math.random()-0.5)*25,
+                    (Math.random()-0.5)*25,
+                    4+Math.random()*6,
+                    0,
+                    Math.PI*2
+                );
+                ctx.fill();
+            }
+        }
+
+        // уламок станції
+        if(d.type===1){
+
+            ctx.fillStyle="#9e9e9e";
+
+            ctx.fillRect(-25,-25,50,50);
+
+            ctx.fillStyle="#00bfff";
+
+            ctx.fillRect(-70,-12,35,24);
+            ctx.fillRect(35,-12,35,24);
+
+            ctx.strokeStyle="#66ffff";
+
+            ctx.strokeRect(-70,-12,35,24);
+            ctx.strokeRect(35,-12,35,24);
+        }
+
+        // супутник
+        if(d.type===2){
+
+            ctx.fillStyle="#bbb";
+
+            ctx.beginPath();
+            ctx.arc(0,0,20,0,Math.PI*2);
+            ctx.fill();
+
+            ctx.strokeStyle="#00e5ff";
+            ctx.lineWidth=4;
+
+            ctx.beginPath();
+            ctx.moveTo(-45,0);
+            ctx.lineTo(45,0);
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.moveTo(0,-45);
+            ctx.lineTo(0,45);
+            ctx.stroke();
+        }
+
+        ctx.restore();
+
+        d.y += d.speed;
+        d.rotation += d.rotSpeed;
+    }
+}
+
+function moveDebris(){
+
+    debris = debris.filter(d=>{
+
+        if(d.y > canvas.height+100){
+
+            score++;
+            return false;
+        }
+
+        return true;
+    });
+}
+
+function collision(){
+
+    for(let d of debris){
+
+        const dx = rocket.x - d.x;
+        const dy = rocket.y - d.y;
+
+        const dist = Math.sqrt(dx*dx + dy*dy);
+
+        if(dist < d.size/2 + 30){
+
+            createExplosion(
+                rocket.x,
+                rocket.y
+            );
+
+            gameOver = true;
+        }
+    }
+}
+
+function createExplosion(x,y){
+
+    for(let i=0;i<120;i++){
+
+        particles.push({
+            x:x,
+            y:y,
+            dx:(Math.random()-0.5)*15,
+            dy:(Math.random()-0.5)*15,
+            size:2+Math.random()*6,
+            life:50
+        });
+    }
+}
+
+function drawParticles(){
+
+    for(let p of particles){
+
+        ctx.fillStyle =
+        `rgba(255,${100+Math.random()*155},0,${p.life/50})`;
+
+        ctx.beginPath();
+        ctx.arc(p.x,p.y,p.size,0,Math.PI*2);
+        ctx.fill();
+
+        p.x += p.dx;
+        p.y += p.dy;
+
+        p.life--;
+    }
+
+    particles = particles.filter(p=>p.life>0);
+}
+
+function drawUI(){
+
+    ctx.fillStyle="white";
+    ctx.font="40px Arial";
+
+    ctx.fillText(
+        "SCORE: "+score,
+        30,
+        60
+    );
+
+    if(gameOver){
+
+        ctx.font="90px Arial";
+
+        ctx.fillText(
+            "GAME OVER",
+            canvas.width/2-300,
+            canvas.height/2
+        );
+
+        ctx.font="35px Arial";
+
+        ctx.fillText(
+            "R — restart",
+            canvas.width/2-90,
+            canvas.height/2+70
+        );
+    }
+}
+
+function gameLoop(){
+
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+
+    drawStars();
+
+    if(!gameOver){
+
+        moveRocket();
+
+        if(Math.random()<0.03){
+            spawnDebris();
+        }
+
+        drawDebris();
+
+        moveDebris();
+
+        collision();
+    }
+
+    drawRocket();
+
+    drawParticles();
+
+    drawUI();
+
+    requestAnimationFrame(gameLoop);
+}
+
+gameLoop();
+</script>
+
+</body>
+</html>
