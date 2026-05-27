@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<title>Space Game</title>
+
+<style>
+body{
+    margin:0;
+    overflow:hidden;
+    background:black;
+}
+
+canvas{
+    display:block;
+    background:#030712;
+}
+</style>
+</head>
+
+<body>
+
+<canvas id="game"></canvas>
+
+<script>
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
+const world = {
+    width: 6000,
+    height: 6000
+};
+
+let keys = {};
+
+document.addEventListener("keydown", function(e){
+    keys[e.key] = true;
+});
+
+document.addEventListener("keyup", function(e){
+    keys[e.key] = false;
+});
+
+const rocket = {
+    x: world.width / 2,
+    y: world.height / 2,
+
+    vx: 0,
+    vy: 0,
+
+    angle: 0,
+
+    thrust: 0.2,
+    rotation: 0.05
+};
+
+const camera = {
+    x: 0,
+    y: 0
+};
+
+let stars = [];
+let asteroids = [];
+
+for(let i = 0; i < 2000; i++){
+
+    stars.push({
+        x: Math.random() * world.width,
+        y: Math.random() * world.height,
+        size: Math.random() * 2
+    });
+}
+
+for(let i = 0; i < 300; i++){
+
+    asteroids.push({
+        x: Math.random() * world.width,
+        y: Math.random() * world.height,
+
+        size: 20 + Math.random() * 60,
+
+        rotation: Math.random() * Math.PI * 2,
+        speed: (Math.random() - 0.5) * 0.02,
+
+        type: Math.floor(Math.random() * 4)
+    });
+}
+
+function updateCamera(){
+
+    camera.x =
+    rocket.x - canvas.width / 2;
+
+    camera.y =
+    rocket.y - canvas.height / 2;
+}
+
+function drawStars(){
+
+    ctx.fillStyle = "white";
+
+    for(let s of stars){
+
+        const x = s.x - camera.x;
+        const y = s.y - camera.y;
+
+        if(
+            x < 0 ||
+            x > canvas.width ||
+            y < 0 ||
+            y > canvas.height
+        ){
+            continue;
+        }
+
+        ctx.fillRect(x, y, s.size, s.size);
+    }
+}
+
+function drawRocket(){
+
+    ctx.save();
+
+    ctx.translate(
+        rocket.x - camera.x,
+        rocket.y - camera.y
+    );
+
+    ctx.rotate(rocket.angle);
+
+    // корпус
+    ctx.fillStyle = "silver";
+
+    ctx.beginPath();
+    ctx.moveTo(40, 0);
+    ctx.lineTo(-25, -20);
+    ctx.lineTo(-15, 0);
+    ctx.lineTo(-25, 20);
+    ctx.closePath();
+    ctx.fill();
+
+    // ніс
+    ctx.fillStyle = "red";
+
+    ctx.beginPath();
+    ctx.moveTo(45, 0);
+    ctx.lineTo(20, -12);
+    ctx.lineTo(20, 12);
+    ctx.closePath();
+    ctx.fill();
+
+    // кабіна
+    ctx.fillStyle = "cyan";
+
+    ctx.beginPath();
+    ctx.arc(5, 0, 8, 0, Math.PI * 2);
+    ctx.fill();
+
+    // крила
+    ctx.fillStyle = "#666";
+
+    ctx.beginPath();
+    ctx.moveTo(-15, -15);
+    ctx.lineTo(-40, -35);
+    ctx.lineTo(-18, -5);
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.moveTo(-15, 15);
+    ctx.lineTo(-40, 35);
+    ctx.lineTo(-18, 5);
+    ctx.fill();
+
+    // двигун
+    if(keys["ArrowUp"]){
+
+        ctx.fillStyle = "orange";
+
+        ctx.beginPath();
+        ctx.moveTo(-25, -8);
+        ctx.lineTo(-60 - Math.random() * 20, 0);
+        ctx.lineTo(-25, 8);
+        ctx.closePath();
+        ctx.fill();
+    }
+
+    ctx.restore();
+}
+
+function moveRocket(){
+
+    if(keys["ArrowLeft"]){
+        rocket.angle -= rocket.rotation;
+    }
+
+    if(keys["ArrowRight"]){
+        rocket.angle += rocket.rotation;
+    }
+
+    if(keys["ArrowUp"]){
+
+        rocket.vx +=
+        Math.cos(rocket.angle) *
+        rocket.thrust;
+
+        rocket.vy +=
+        Math.sin(rocket.angle) *
+        rocket.thrust;
+    }
+
+    rocket.x += rocket.vx;
+    rocket.y += rocket.vy;
+
+    rocket.vx *= 0.99;
+    rocket.vy *= 0.99;
+
+    if(rocket.x < 0) rocket.x = 0;
+    if(rocket.y < 0) rocket.y = 0;
+
+    if(rocket.x > world.width){
+        rocket.x = world.width;
+    }
+
+    if(rocket.y > world.height){
+        rocket.y = world.height;
+    }
+}
+
+function drawAsteroids(){
+
+    for(let a of asteroids){
+
+        const x = a.x - camera.x;
+        const y = a.y - camera.y;
+
+        if(
+            x < -100 ||
+            x > canvas.width + 100 ||
+            y < -100 ||
+            y > canvas.height + 100
+        ){
+            continue;
+        }
+
+        ctx.save();
+
+        ctx.translate(x, y);
+        ctx.rotate(a.rotation);
+
+        // Астероїд
+        if(a.type === 0){
+
+            ctx.fillStyle = "#666";
+
+            ctx.beginPath();
+
+            for(let i = 0; i < 8; i++){
+
+                const ang =
+                i * Math.PI * 2 / 8;
+
+                const radius =
+                a.size / 2 +
+                Math.random() * 8;
+
+                const px =
+                Math.cos(ang) * radius;
+
+                const py =
+                Math.sin(ang) * radius;
+
+                if(i === 0){
+                    ctx.moveTo(px, py);
+                }else{
+                    ctx.lineTo(px, py);
+                }
+            }
+
+            ctx.closePath();
+            ctx.fill();
+        }
+
+        // Супутник
+        if(a.type === 1){
+
+            ctx.fillStyle = "#aaa";
+
+            ctx.fillRect(-15,-15,30,30);
+
+            ctx.fillStyle = "#00bfff";
+
+            ctx.fillRect(-45,-10,25,20);
+            ctx.fillRect(20,-10,25,20);
+        }
+
+        // Уламок
+        if(a.type === 2){
+
+            ctx.fillStyle = "#777";
+
+            ctx.beginPath();
+            ctx.moveTo(-25,-20);
+            ctx.lineTo(30,-10);
+            ctx.lineTo(20,25);
+            ctx.lineTo(-15,20);
+            ctx.closePath();
+            ctx.fill();
+        }
+
+        // Міна
+        if(a.type === 3){
+
+            ctx.fillStyle = "#444";
+
+            ctx.beginPath();
+            ctx.arc(0,0,a.size/2,0,Math.PI*2);
+            ctx.fill();
+
+            ctx.strokeStyle = "red";
+
+            for(let i = 0; i < 8; i++){
+
+                const ang =
+                i * Math.PI * 2 / 8;
+
+                ctx.beginPath();
+
+                ctx.moveTo(
+                    Math.cos(ang) * a.size/2,
+                    Math.sin(ang) * a.size/2
+                );
+
+                ctx.lineTo(
+                    Math.cos(ang) * (a.size/2 + 15),
+                    Math.sin(ang) * (a.size/2 + 15)
+                );
+
+                ctx.stroke();
+            }
+        }
+
+        ctx.restore();
+
+        a.rotation += a.speed;
+    }
+}
+
+function drawUI(){
+
+    ctx.fillStyle = "white";
+
+    ctx.font = "28px Arial";
+
+    ctx.fillText(
+        "X: " + Math.floor(rocket.x),
+        20,
+        40
+    );
+
+    ctx.fillText(
+        "Y: " + Math.floor(rocket.y),
+        20,
+        75
+    );
+}
+
+function gameLoop(){
+
+    ctx.clearRect(
+        0,
+        0,
+        canvas.width,
+        canvas.height
+    );
+
+    moveRocket();
+
+    updateCamera();
+
+    drawStars();
+
+    drawAsteroids();
+
+    drawRocket();
+
+    drawUI();
+
+    requestAnimationFrame(gameLoop);
+}
+
+gameLoop();
+</script>
+
+</body>
+</html>
