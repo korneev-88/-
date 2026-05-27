@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<title>Space Flight</title>
+
+<style>
+body{
+    margin:0;
+    overflow:hidden;
+    background:black;
+}
+
+canvas{
+    display:block;
+    background:#020617;
+}
+</style>
+</head>
+
+<body>
+
+<canvas id="game"></canvas>
+
+<script>
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
+let keys = {};
+
+document.addEventListener("keydown", function(e){
+    keys[e.key] = true;
+});
+
+document.addEventListener("keyup", function(e){
+    keys[e.key] = false;
+});
+
+const rocket = {
+    x: canvas.width / 2,
+    y: canvas.height / 2,
+
+    angle: 0,
+
+    velocityX: 0,
+    velocityY: 0,
+
+    thrust: 0.15,
+    rotationSpeed: 0.05,
+
+    size: 30
+};
+
+let debris = [];
+let particles = [];
+let score = 0;
+let gameOver = false;
+
+function spawnDebris(){
+
+    let side = Math.floor(Math.random() * 4);
+
+    let x;
+    let y;
+
+    if(side === 0){
+        x = Math.random() * canvas.width;
+        y = -50;
+    }
+
+    if(side === 1){
+        x = canvas.width + 50;
+        y = Math.random() * canvas.height;
+    }
+
+    if(side === 2){
+        x = Math.random() * canvas.width;
+        y = canvas.height + 50;
+    }
+
+    if(side === 3){
+        x = -50;
+        y = Math.random() * canvas.height;
+    }
+
+    const dx = rocket.x - x;
+    const dy = rocket.y - y;
+
+    const angle = Math.atan2(dy, dx);
+
+    const speed = 2 + Math.random() * 3;
+
+    debris.push({
+        x: x,
+        y: y,
+
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+
+        size: 20 + Math.random() * 35,
+
+        rotation: 0,
+        rotationSpeed: (Math.random() - 0.5) * 0.1
+    });
+}
+
+function drawRocket(){
+
+    ctx.save();
+
+    ctx.translate(rocket.x, rocket.y);
+    ctx.rotate(rocket.angle);
+
+    // корпус
+    ctx.fillStyle = "silver";
+
+    ctx.beginPath();
+    ctx.moveTo(35, 0);
+    ctx.lineTo(-25, -20);
+    ctx.lineTo(-15, 0);
+    ctx.lineTo(-25, 20);
+    ctx.closePath();
+    ctx.fill();
+
+    // кабіна
+    ctx.fillStyle = "cyan";
+
+    ctx.beginPath();
+    ctx.arc(5, 0, 8, 0, Math.PI * 2);
+    ctx.fill();
+
+    // крила
+    ctx.fillStyle = "#777";
+
+    ctx.beginPath();
+    ctx.moveTo(-15, -15);
+    ctx.lineTo(-35, -30);
+    ctx.lineTo(-20, -5);
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.moveTo(-15, 15);
+    ctx.lineTo(-35, 30);
+    ctx.lineTo(-20, 5);
+    ctx.fill();
+
+    // полум’я
+    if(keys["ArrowUp"]){
+
+        ctx.fillStyle = "orange";
+
+        ctx.beginPath();
+        ctx.moveTo(-25, -10);
+        ctx.lineTo(-55 - Math.random() * 20, 0);
+        ctx.lineTo(-25, 10);
+        ctx.fill();
+    }
+
+    ctx.restore();
+}
+
+function moveRocket(){
+
+    // поворот
+    if(keys["ArrowLeft"]){
+        rocket.angle -= rocket.rotationSpeed;
+    }
+
+    if(keys["ArrowRight"]){
+        rocket.angle += rocket.rotationSpeed;
+    }
+
+    // тяга
+    if(keys["ArrowUp"]){
+
+        rocket.velocityX += Math.cos(rocket.angle) * rocket.thrust;
+        rocket.velocityY += Math.sin(rocket.angle) * rocket.thrust;
+
+        particles.push({
+            x: rocket.x - Math.cos(rocket.angle) * 25,
+            y: rocket.y - Math.sin(rocket.angle) * 25,
+
+            vx: -Math.cos(rocket.angle) * 3 + (Math.random() - 0.5) * 2,
+            vy: -Math.sin(rocket.angle) * 3 + (Math.random() - 0.5) * 2,
+
+            life: 30
+        });
+    }
+
+    rocket.x += rocket.velocityX;
+    rocket.y += rocket.velocityY;
+
+    // тертя
+    rocket.velocityX *= 0.99;
+    rocket.velocityY *= 0.99;
+
+    // межі
+    if(rocket.x < 0) rocket.x = canvas.width;
+    if(rocket.x > canvas.width) rocket.x = 0;
+
+    if(rocket.y < 0) rocket.y = canvas.height;
+    if(rocket.y > canvas.height) rocket.y = 0;
+}
+
+function drawDebris(){
+
+    for(let d of debris){
+
+        ctx.save();
+
+        ctx.translate(d.x, d.y);
+        ctx.rotate(d.rotation);
+
+        ctx.fillStyle = "#666";
+
+        ctx.beginPath();
+
+        for(let i = 0; i < 8; i++){
+
+            const angle = i * Math.PI * 2 / 8;
+            const radius = d.size / 2 + Math.random() * 5;
+
+            const px = Math.cos(angle) * radius;
+            const py = Math.sin(angle) * radius;
+
+            if(i === 0){
+                ctx.moveTo(px, py);
+            }else{
+                ctx.lineTo(px, py);
+            }
+        }
+
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.restore();
+
+        d.x += d.vx;
+        d.y += d.vy;
+
+        d.rotation += d.rotationSpeed;
+    }
+}
+
+function updateDebris(){
+
+    debris = debris.filter(function(d){
+
+        const dx = rocket.x - d.x;
+        const dy = rocket.y - d.y;
+
+        const distance = Math.sqrt(dx * dx + dy * dy);
+
+        if(distance < d.size / 2 + rocket.size){
+
+            createExplosion(
+                rocket.x,
+                rocket.y
+            );
+
+            gameOver = true;
+        }
+
+        if(
+            d.x < -200 ||
+            d.x > canvas.width + 200 ||
+            d.y < -200 ||
+            d.y > canvas.height + 200
+        ){
+            score++;
+            return false;
+        }
+
+        return true;
+    });
+}
+
+function createExplosion(x, y){
+
+    for(let i = 0; i < 100; i++){
+
+        particles.push({
+
+            x: x,
+            y: y,
+
+            vx: (Math.random() - 0.5) * 10,
+            vy: (Math.random() - 0.5) * 10,
+
+            life: 60
+        });
+    }
+}
+
+function drawParticles(){
+
+    for(let p of particles){
+
+        ctx.fillStyle =
+        "rgba(255,150,0," + (p.life / 60) + ")";
+
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 3, 0, Math.PI * 2);
+        ctx.fill();
+
+        p.x += p.vx;
+        p.y += p.vy;
+
+        p.life--;
+    }
+
+    particles = particles.filter(function(p){
+        return p.life > 0;
+    });
+}
+
+function drawStars(){
+
+    ctx.fillStyle = "white";
+
+    for(let i = 0; i < 120; i++){
+
+        const x = (i * 97) % canvas.width;
+        const y = (i * 53 + performance.now() * 0.02) % canvas.height;
+
+        ctx.fillRect(x, y, 2, 2);
+    }
+}
+
+function drawUI(){
+
+    ctx.fillStyle = "white";
+    ctx.font = "35px Arial";
+
+    ctx.fillText(
+        "Score: " + score,
+        20,
+        50
+    );
+
+    if(gameOver){
+
+        ctx.font = "80px Arial";
+
+        ctx.fillText(
+            "GAME OVER",
+            canvas.width / 2 - 250,
+            canvas.height / 2
+        );
+
+        ctx.font = "30px Arial";
+
+        ctx.fillText(
+            "F5 для рестарту",
+            canvas.width / 2 - 100,
+            canvas.height / 2 + 60
+        );
+    }
+}
+
+function gameLoop(){
+
+    ctx.clearRect(
+        0,
+        0,
+        canvas.width,
+        canvas.height
+    );
+
+    drawStars();
+
+    if(!gameOver){
+
+        moveRocket();
+
+        if(Math.random() < 0.03){
+            spawnDebris();
+        }
+
+        drawDebris();
